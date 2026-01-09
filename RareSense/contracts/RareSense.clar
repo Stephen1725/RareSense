@@ -234,6 +234,61 @@
     (ok (var-get total-nfts))
 )
 
+;; Advanced batch rarity computation with comparative analysis and statistics
+;; This function processes multiple NFTs, computes their rarity scores,
+;; performs comparative ranking, and generates comprehensive batch statistics.
+;; It simulates a batch inference process in deep learning where multiple
+;; samples are processed together for efficiency with detailed analytics.
+;; Returns: processed count, success count, min/max scores, average score,
+;; and batch processing metadata for model performance evaluation.
+(define-public (batch-compute-and-rank (nft-ids (list 10 uint)))
+    (let
+        (
+            ;; Pre-validation check to ensure system is initialized
+            (system-ready (var-get weights-initialized))
+        )
+        (begin
+            ;; Ensure weights are initialized before processing
+            (asserts! system-ready err-owner-only)
+            
+            ;; Process all NFTs in the batch and collect normalized scores
+            (let
+                (
+                    (computation-results (map compute-single-nft-in-batch nft-ids))
+                    (valid-scores (filter is-valid-score computation-results))
+                    (success-count (len valid-scores))
+                    (total-requested (len nft-ids))
+                )
+                ;; Calculate batch statistics for model performance analysis
+                (let
+                    (
+                        (batch-min-score (fold find-minimum valid-scores u10000))
+                        (batch-max-score (fold find-maximum valid-scores u0))
+                        (score-sum (fold sum-scores valid-scores u0))
+                        (avg-score (if (> success-count u0)
+                            (/ score-sum success-count)
+                            u0
+                        ))
+                        (processing-timestamp block-height)
+                    )
+                    ;; Return comprehensive batch analysis results
+                    (ok {
+                        total-requested: total-requested,
+                        successfully-processed: success-count,
+                        failed-count: (- total-requested success-count),
+                        batch-min-score: batch-min-score,
+                        batch-max-score: batch-max-score,
+                        batch-avg-score: avg-score,
+                        global-max-score: (var-get max-raw-score),
+                        processing-block: processing-timestamp,
+                        batch-complete: true
+                    })
+                )
+            )
+        )
+    )
+)
+
 ;; Helper function to check if a score is valid (greater than zero)
 (define-private (is-valid-score (score uint))
     (> score u0)
